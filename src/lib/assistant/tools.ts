@@ -701,6 +701,321 @@ export async function executeGetPipelineSummary(
 }
 
 // ============================================================
+// WhatsApp Messenger Helper
+// ============================================================
+export async function sendWhatsAppMessageToClient({
+  conversationId,
+  phoneNumber,
+  message,
+}: {
+  conversationId?: string
+  phoneNumber: string
+  message: string
+}) {
+  const timestamp = new Date().toISOString()
+  let convId = conversationId
+
+  if (!convId) {
+    const cleanPhone = phoneNumber.replace(/[^0-9]/g, '')
+    const { data: conv } = await supabaseAdmin
+      .from('conversations')
+      .select('id')
+      .or(`phone_number.eq.${phoneNumber},phone_number.ilike.%${cleanPhone.slice(-10)}%`)
+      .limit(1)
+      .maybeSingle()
+
+    if (conv) {
+      convId = conv.id
+    } else {
+      const { data: newConv } = await supabaseAdmin
+        .from('conversations')
+        .insert({
+          phone_number: phoneNumber,
+          name: 'Customer',
+          last_message: message,
+          stage: 'interested',
+          created_at: timestamp,
+          updated_at: timestamp,
+        })
+        .select()
+        .single()
+      convId = newConv?.id
+    }
+  }
+
+  if (convId) {
+    await supabaseAdmin.from('messages').insert({
+      conversation_id: convId,
+      phone_number: phoneNumber,
+      message,
+      direction: 'outgoing',
+      timestamp,
+    })
+
+    await supabaseAdmin
+      .from('conversations')
+      .update({
+        last_message: message,
+        updated_at: timestamp,
+      })
+      .eq('id', convId)
+  }
+
+  // Trigger n8n Cloud API webhook if configured
+  const webhookUrl = process.env.N8N_REPLY_WEBHOOK_URL
+  if (webhookUrl) {
+    try {
+      await fetch(webhookUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-webhook-secret': process.env.N8N_WEBHOOK_SECRET || '',
+        },
+        body: JSON.stringify({
+          phone_number: phoneNumber,
+          message,
+          direction: 'outgoing',
+          timestamp,
+        }),
+      })
+    } catch (e) {
+      console.warn('[WhatsApp Webhook delivery warning]:', e)
+    }
+  }
+
+  return { success: true, conversation_id: convId }
+}
+
+// ============================================================
+// TOOL 6: create_invoice (Create Bill & Optional Send)
+// ============================================================
+export async function executeCreateInvoice(
+  args: {
+    customer_name: string
+    amount: number | string
+    items?: Array<{ description: string; quantity?: number; unit_price?: number; total?: number }>
+    due_date?: string
+    notes?: string
+    is_quotation?: boolean
+    send_to_client?: boolean
+  },
+  user: UserContext
+) {
+  if (!args.customer_name) {
+    throw new Error('Please specify the customer name for the bill/invoice.')
+  }
+  if (!args.amount && (!args.items || args.items.length === 0)) {
+    throw new Error('Please specify the bill amount or list of items.')
+  }
+
+  const targetLead = await findLeadMatch(args.customer_name)
+  const customerName = targetLead?.name || args.customer_name.trim()
+  const customerPhone = targetLead?.phone_number || '+919876543210'
+
+  const numAmount = typeof args.amount === 'string' ? parseFloat(args.amount.replace(/[^0-9.]/g, '')) || 0 : args.amount || 0
+  const isQuotation = !!args.is_quotation
+  const invNumber = isQuotation ? `QUO-${Date.now().toString().slice(-6)}` : `INV-${Date.now().toString().slice(-6)}`
+
+  let parsedDueDate = new Date(Date.now() + 7 * 86400000)
+  if (args.due_date) {
+    const d = new Date(args.due_date)
+    if (!isNaN(d.getTime())) parsedDueDate = d
+  }
+  const dueDateStr = parsedDueDate.toISOString().split('T')[0]
+
+  const itemsList = args.items && args.items.length > 0 ? args.items : [
+    {
+      description: args.notes || 'Service / Product Consultation',
+      quantity: 1,
+      unit_price: numAmount,
+      total: numAmount,
+    }
+  ]
+
+  const { data: invoice, error } = await supabaseAdmin
+    .from('invoices')
+    .insert({
+      invoice_number: invNumber,
+      customer_name: customerName,
+      customer_phone: customerPhone,
+      issue_date: new Date().toISOString().split('T')[0],
+      due_date: dueDateStr,
+      subtotal: numAmount,
+      tax_rate: 18,
+      tax_amount: Math.round(numAmount * 0.18),
+      discount: 0,
+      total_amount: Math.round(numAmount * 1.18),
+      paid_amount: 0,
+      status: 'unpaid',
+      items: itemsList,
+      notes: args.notes || null,
+      is_quotation: isQuotation,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    })
+    .select()
+    .single()
+
+  if (error) {
+    console.error('[executeCreateInvoice error]:', error)
+    throw new Error(`Database error creating invoice: ${error.message}`)
+  }
+
+  let dispatchStatus = 'Bill saved in CRM'
+
+  // Send to client via WhatsApp if requested
+  if (args.send_to_client !== false) {
+    const billMsg = `📄 *${isQuotation ? 'Quotation' : 'Invoice'} (#${invNumber})*\n\nHello ${customerName},\nHere are your bill details for ₹${Math.round(numAmount * 1.18).toLocaleString('en-IN')}.\n\n• Due Date: ${dueDateStr}\n• Subtotal: ₹${numAmount.toLocaleString('en-IN')}\n• GST (18%): ₹${Math.round(numAmount * 0.18).toLocaleString('en-IN')}\n• Total Amount: ₹${Math.round(numAmount * 1.18).toLocaleString('en-IN')}\n\nPlease let us know if you have any questions or once the payment is completed. Thank you!`
+
+    await sendWhatsAppMessageToClient({
+      conversationId: targetLead?.conversation_id,
+      phoneNumber: customerPhone,
+      message: billMsg,
+    })
+    dispatchStatus = `Sent directly to ${customerName} (${customerPhone}) via WhatsApp`
+  }
+
+  return {
+    success: true,
+    invoice_number: invNumber,
+    customer_name: customerName,
+    total_amount: `₹${Math.round(numAmount * 1.18).toLocaleString('en-IN')}`,
+    due_date: dueDateStr,
+    status: 'unpaid',
+    is_quotation: isQuotation,
+    dispatch_status: dispatchStatus,
+  }
+}
+
+// ============================================================
+// TOOL 7: send_invoice (Send Existing Bill via WhatsApp)
+// ============================================================
+export async function executeSendInvoice(
+  args: {
+    customer_name?: string
+    invoice_number?: string
+    custom_message?: string
+  },
+  user: UserContext
+) {
+  let query = supabaseAdmin.from('invoices').select('*')
+  if (args.invoice_number) {
+    query = query.eq('invoice_number', args.invoice_number)
+  } else if (args.customer_name) {
+    query = query.ilike('customer_name', `%${args.customer_name}%`)
+  }
+
+  const { data: inv, error } = await query.order('created_at', { ascending: false }).limit(1).maybeSingle()
+  if (error || !inv) {
+    throw new Error(`Invoice not found for ${args.invoice_number || args.customer_name}`)
+  }
+
+  const targetLead = await findLeadMatch(inv.customer_name)
+  const customerPhone = inv.customer_phone || targetLead?.phone_number || '+919876543210'
+
+  const billMsg = args.custom_message || `📄 *Invoice (#${inv.invoice_number})*\n\nHello ${inv.customer_name},\nHere are your invoice details:\n\n• Amount: ₹${Number(inv.total_amount).toLocaleString('en-IN')}\n• Due Date: ${inv.due_date}\n• Status: ${inv.status.toUpperCase()}\n\nPlease complete the payment at your earliest convenience. Thank you!`
+
+  await sendWhatsAppMessageToClient({
+    conversationId: targetLead?.conversation_id,
+    phoneNumber: customerPhone,
+    message: billMsg,
+  })
+
+  return {
+    success: true,
+    message: `Invoice #${inv.invoice_number} sent to ${inv.customer_name} (${customerPhone}) via WhatsApp`,
+    invoice_number: inv.invoice_number,
+    customer_name: inv.customer_name,
+    amount: `₹${Number(inv.total_amount).toLocaleString('en-IN')}`,
+  }
+}
+
+// ============================================================
+// TOOL 8: send_payment_reminder (WhatsApp Payment Reminder)
+// ============================================================
+export async function executeSendPaymentReminder(
+  args: {
+    customer_name: string
+    amount?: number | string
+    invoice_number?: string
+    due_date?: string
+    custom_message?: string
+    urgency?: 'friendly' | 'due_today' | 'overdue'
+  },
+  user: UserContext
+) {
+  if (!args.customer_name) {
+    throw new Error('Please specify the customer name to send a payment reminder.')
+  }
+
+  const targetLead = await findLeadMatch(args.customer_name)
+  const customerName = targetLead?.name || args.customer_name.trim()
+  const customerPhone = targetLead?.phone_number || '+919876543210'
+
+  let invNum = args.invoice_number
+  let amountStr = args.amount ? String(args.amount) : ''
+  let dueStr = args.due_date || 'as per invoice terms'
+
+  if (!invNum || !amountStr) {
+    const { data: inv } = await supabaseAdmin
+      .from('invoices')
+      .select('*')
+      .eq('status', 'unpaid')
+      .ilike('customer_name', `%${customerName}%`)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    if (inv) {
+      invNum = inv.invoice_number
+      amountStr = `₹${Number(inv.total_amount).toLocaleString('en-IN')}`
+      dueStr = inv.due_date
+    }
+  }
+
+  if (!amountStr) amountStr = 'the pending amount'
+  if (!amountStr.startsWith('₹') && !isNaN(Number(amountStr))) {
+    amountStr = `₹${Number(amountStr).toLocaleString('en-IN')}`
+  }
+
+  let reminderText = ''
+  if (args.custom_message) {
+    reminderText = args.custom_message
+  } else if (args.urgency === 'overdue') {
+    reminderText = `⚠️ *Payment Overdue Notice*\n\nDear ${customerName},\nThis is an urgent reminder that payment of ${amountStr}${invNum ? ` for Invoice #${invNum}` : ''} was due on ${dueStr}.\n\nPlease arrange the payment at your earliest convenience to avoid any service interruption. If already paid, please ignore this message. Thank you!`
+  } else {
+    reminderText = `🔔 *Payment Reminder*\n\nDear ${customerName},\nThis is a gentle reminder regarding payment of ${amountStr}${invNum ? ` for Invoice #${invNum}` : ''}, due on ${dueStr}.\n\nPlease let us know once completed. Thank you!`
+  }
+
+  await sendWhatsAppMessageToClient({
+    conversationId: targetLead?.conversation_id,
+    phoneNumber: customerPhone,
+    message: reminderText,
+  })
+
+  await supabaseAdmin.from('tasks').insert({
+    title: `Payment Reminder sent to ${customerName} (${amountStr})`,
+    due_date: new Date().toISOString().split('T')[0],
+    status: 'completed',
+    channel: 'whatsapp',
+    notes: reminderText,
+    assigned_to: user.id,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  })
+
+  return {
+    success: true,
+    message: `Payment reminder successfully sent to ${customerName} (${customerPhone}) via WhatsApp`,
+    customer_name: customerName,
+    phone_number: customerPhone,
+    invoice_number: invNum || 'N/A',
+    amount: amountStr,
+    delivered_via: 'WhatsApp',
+  }
+}
+
+// ============================================================
 // OpenAI Tool Definitions (JSON Schema)
 // ============================================================
 export const CRM_TOOLS = [
@@ -853,6 +1168,108 @@ export const CRM_TOOLS = [
             description: 'Optional user ID to filter metrics for a specific employee.',
           },
         },
+      },
+    },
+  },
+  {
+    type: 'function' as const,
+    function: {
+      name: 'create_invoice',
+      description:
+        'Generate a new bill, tax invoice, or quotation for a customer/lead and optionally dispatch it to their WhatsApp number.',
+      parameters: {
+        type: 'object',
+        properties: {
+          customer_name: {
+            type: 'string',
+            description: 'Customer or lead name (e.g. "Rahul Sharma", "Priya Patel").',
+          },
+          amount: {
+            type: 'number',
+            description: 'Total bill / invoice amount in INR (e.g. 5000, 12500).',
+          },
+          due_date: {
+            type: 'string',
+            description: 'Due date in YYYY-MM-DD or keywords (e.g. "tomorrow", "next week", "2026-09-15").',
+          },
+          notes: {
+            type: 'string',
+            description: 'Description of items, services rendered, or notes for the bill.',
+          },
+          is_quotation: {
+            type: 'boolean',
+            description: 'Set to true if this is an estimate/quotation rather than a final tax invoice.',
+          },
+          send_to_client: {
+            type: 'boolean',
+            description: 'Set to true (default) to send the bill message directly to the customer via WhatsApp.',
+          },
+        },
+        required: ['customer_name', 'amount'],
+      },
+    },
+  },
+  {
+    type: 'function' as const,
+    function: {
+      name: 'send_invoice',
+      description:
+        'Send an existing bill or invoice directly to the customer via WhatsApp.',
+      parameters: {
+        type: 'object',
+        properties: {
+          customer_name: {
+            type: 'string',
+            description: 'Customer name to lookup their latest invoice.',
+          },
+          invoice_number: {
+            type: 'string',
+            description: 'Invoice number if known (e.g. "INV-102938").',
+          },
+          custom_message: {
+            type: 'string',
+            description: 'Optional custom message or greeting to accompany the bill.',
+          },
+        },
+      },
+    },
+  },
+  {
+    type: 'function' as const,
+    function: {
+      name: 'send_payment_reminder',
+      description:
+        'Send a polite WhatsApp payment reminder message to a client for an outstanding balance or invoice.',
+      parameters: {
+        type: 'object',
+        properties: {
+          customer_name: {
+            type: 'string',
+            description: 'Client name or phone number (e.g. "Rahul Sharma").',
+          },
+          amount: {
+            type: 'string',
+            description: 'Optional amount to mention (e.g. "₹5,000", 15000). If not provided, looks up their unpaid invoices.',
+          },
+          invoice_number: {
+            type: 'string',
+            description: 'Optional invoice number (e.g. "INV-102938").',
+          },
+          due_date: {
+            type: 'string',
+            description: 'Optional due date to mention in the reminder message.',
+          },
+          urgency: {
+            type: 'string',
+            enum: ['friendly', 'due_today', 'overdue'],
+            description: 'Urgency tone of the payment reminder message.',
+          },
+          custom_message: {
+            type: 'string',
+            description: 'Custom reminder text if the user specified exact wording.',
+          },
+        },
+        required: ['customer_name'],
       },
     },
   },

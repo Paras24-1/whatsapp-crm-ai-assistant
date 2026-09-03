@@ -147,7 +147,32 @@ CREATE TABLE IF NOT EXISTS notes (
 );
 
 -- ============================================================
--- 10. TABLE: assistant_tool_logs (Audit Trail for AI Actions)
+-- 10. TABLE: invoices (Bills, Tax Invoices & Quotations)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS invoices (
+  id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  invoice_number  TEXT NOT NULL UNIQUE,
+  customer_name   TEXT NOT NULL,
+  customer_phone  TEXT,
+  customer_email  TEXT,
+  issue_date      DATE NOT NULL DEFAULT CURRENT_DATE,
+  due_date        DATE NOT NULL DEFAULT (CURRENT_DATE + INTERVAL '7 days')::DATE,
+  subtotal        NUMERIC(12,2) NOT NULL DEFAULT 0,
+  tax_rate        NUMERIC(5,2) NOT NULL DEFAULT 18,
+  tax_amount      NUMERIC(12,2) NOT NULL DEFAULT 0,
+  discount        NUMERIC(12,2) NOT NULL DEFAULT 0,
+  total_amount    NUMERIC(12,2) NOT NULL DEFAULT 0,
+  paid_amount     NUMERIC(12,2) NOT NULL DEFAULT 0,
+  status          TEXT NOT NULL DEFAULT 'unpaid' CHECK (status IN ('paid', 'unpaid', 'partially_paid', 'overdue', 'draft')),
+  items           JSONB DEFAULT '[]'::jsonb,
+  notes           TEXT,
+  is_quotation    BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- ============================================================
+-- 11. TABLE: assistant_tool_logs (Audit Trail for AI Actions)
 -- ============================================================
 CREATE TABLE IF NOT EXISTS assistant_tool_logs (
   id                UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -206,12 +231,14 @@ DROP TRIGGER IF EXISTS update_leads_updated_at ON leads;
 DROP TRIGGER IF EXISTS update_tasks_updated_at ON tasks;
 DROP TRIGGER IF EXISTS update_todos_updated_at ON todos;
 DROP TRIGGER IF EXISTS update_notes_updated_at ON notes;
+DROP TRIGGER IF EXISTS update_invoices_updated_at ON invoices;
 
 CREATE TRIGGER update_conversations_updated_at BEFORE UPDATE ON conversations FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_leads_updated_at BEFORE UPDATE ON leads FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_tasks_updated_at BEFORE UPDATE ON tasks FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_todos_updated_at BEFORE UPDATE ON todos FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_notes_updated_at BEFORE UPDATE ON notes FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_invoices_updated_at BEFORE UPDATE ON invoices FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- ============================================================
 -- 14. ROW LEVEL SECURITY (RLS) POLICIES
@@ -224,6 +251,7 @@ ALTER TABLE schedules             ENABLE ROW LEVEL SECURITY;
 ALTER TABLE tasks                 ENABLE ROW LEVEL SECURITY;
 ALTER TABLE todos                 ENABLE ROW LEVEL SECURITY;
 ALTER TABLE notes                 ENABLE ROW LEVEL SECURITY;
+ALTER TABLE invoices              ENABLE ROW LEVEL SECURITY;
 ALTER TABLE assistant_tool_logs   ENABLE ROW LEVEL SECURITY;
 ALTER TABLE assistant_messages    ENABLE ROW LEVEL SECURITY;
 
@@ -235,6 +263,7 @@ DROP POLICY IF EXISTS "Service role full access - schedules"           ON schedu
 DROP POLICY IF EXISTS "Service role full access - tasks"               ON tasks;
 DROP POLICY IF EXISTS "Service role full access - todos"               ON todos;
 DROP POLICY IF EXISTS "Service role full access - notes"               ON notes;
+DROP POLICY IF EXISTS "Service role full access - invoices"            ON invoices;
 DROP POLICY IF EXISTS "Service role full access - assistant_tool_logs" ON assistant_tool_logs;
 DROP POLICY IF EXISTS "Service role full access - assistant_messages"  ON assistant_messages;
 
@@ -246,6 +275,7 @@ CREATE POLICY "Service role full access - schedules"           ON schedules     
 CREATE POLICY "Service role full access - tasks"               ON tasks               FOR ALL USING (true);
 CREATE POLICY "Service role full access - todos"               ON todos               FOR ALL USING (true);
 CREATE POLICY "Service role full access - notes"               ON notes               FOR ALL USING (true);
+CREATE POLICY "Service role full access - invoices"            ON invoices            FOR ALL USING (true);
 CREATE POLICY "Service role full access - assistant_tool_logs" ON assistant_tool_logs FOR ALL USING (true);
 CREATE POLICY "Service role full access - assistant_messages"  ON assistant_messages  FOR ALL USING (true);
 
@@ -259,6 +289,7 @@ ALTER PUBLICATION supabase_realtime ADD TABLE schedules;
 ALTER PUBLICATION supabase_realtime ADD TABLE tasks;
 ALTER PUBLICATION supabase_realtime ADD TABLE todos;
 ALTER PUBLICATION supabase_realtime ADD TABLE notes;
+ALTER PUBLICATION supabase_realtime ADD TABLE invoices;
 ALTER PUBLICATION supabase_realtime ADD TABLE assistant_messages;
 
 -- ============================================================

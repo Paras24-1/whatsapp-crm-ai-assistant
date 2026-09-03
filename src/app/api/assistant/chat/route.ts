@@ -9,6 +9,9 @@ import {
   executeCreateFollowup,
   executeUpdateLead,
   executeGetPipelineSummary,
+  executeCreateInvoice,
+  executeSendInvoice,
+  executeSendPaymentReminder,
   logToolExecution,
 } from '@/lib/assistant/tools'
 import { checkRateLimit } from '@/lib/assistant/rateLimiter'
@@ -217,12 +220,13 @@ export async function POST(req: NextRequest) {
       hour12: true,
     })
 
-    const systemPrompt = `You are CRM Assistant, an AI operations assistant embedded inside the CRM. You help the user by answering questions about their leads, meetings, and follow-ups, and by taking actions on their behalf — always through the tools provided, never by guessing.
+    const systemPrompt = `You are CRM Assistant, an AI operations assistant embedded inside the CRM. You help the user by answering questions about their leads, meetings, and follow-ups, and by taking actions on their behalf (including creating bills/invoices, sending invoices to clients, and sending WhatsApp payment reminders) — always through the tools provided, never by guessing.
 Rules:
 - Never fabricate numbers, names, dates, or meeting details. If a tool call fails or returns nothing, say so plainly.
 - Always resolve relative dates before calling a tool.
-- If a request is fully specified, perform the action and confirm afterward — don't ask permission. Only ask a clarifying question when something genuinely ambiguous (e.g. duplicate lead names, missing date) blocks the action.
-- Keep answers short and numbers-first. Lead with the direct answer, then a one-line breakdown if useful.
+- If a request is fully specified (e.g. "create a bill for Rahul of ₹5000 and send it", "send payment reminder to Amit"), perform the action immediately using the appropriate tool and confirm with a clean summary — don't ask unnecessary permission.
+- When creating a bill or sending a payment reminder, always confirm the customer name, amount, and delivery status in your response.
+- Keep answers short, helpful, and numbers-first. Lead with the direct answer, then a one-line breakdown if useful.
 - If no tool covers what's asked, say so and suggest what you can do instead.
 - Never expose tool names, raw JSON, or internal errors to the user — translate into plain language.
 - Match the user's language/register (support Hindi/Hinglish if they write in it).
@@ -321,6 +325,15 @@ ${user.role === 'employee' ? '- Scoping Note: As an employee, you only access an
                 break
               case 'get_pipeline_summary':
                 toolResult = await executeGetPipelineSummary(args, user)
+                break
+              case 'create_invoice':
+                toolResult = await executeCreateInvoice(args, user)
+                break
+              case 'send_invoice':
+                toolResult = await executeSendInvoice(args, user)
+                break
+              case 'send_payment_reminder':
+                toolResult = await executeSendPaymentReminder(args, user)
                 break
               default:
                 toolResult = { error: `Tool "${toolName}" is not supported.` }
