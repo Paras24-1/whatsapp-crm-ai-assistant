@@ -226,6 +226,7 @@ Rules:
 - If no tool covers what's asked, say so and suggest what you can do instead.
 - Never expose tool names, raw JSON, or internal errors to the user — translate into plain language.
 - Match the user's language/register (support Hindi/Hinglish if they write in it).
+- Formatting: Keep responses clean and natural. Use bullet points (- item) for lists. Avoid raw markdown asterisks or excessive bold symbols.
 
 Environment Context:
 - Current Server Date: ${formattedServerDate} (${now.toISOString().split('T')[0]})

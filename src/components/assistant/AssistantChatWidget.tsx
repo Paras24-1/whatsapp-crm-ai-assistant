@@ -38,6 +38,62 @@ const QUICK_PROMPTS = [
   { label: 'Follow-up task', prompt: 'Schedule a WhatsApp follow-up with Rahul tomorrow at 11am' },
 ]
 
+function renderInlineText(text: string) {
+  // Replace **bold** with bold spans
+  const parts = text.split(/(\*\*.*?\*\*)/g)
+  return parts.map((part, idx) => {
+    if (part.startsWith('**') && part.endsWith('**')) {
+      return (
+        <strong key={idx} className="font-semibold text-emerald-950 dark:text-emerald-300">
+          {part.slice(2, -2)}
+        </strong>
+      )
+    }
+    return part
+  })
+}
+
+function FormattedMessageContent({ content }: { content: string }) {
+  const lines = content.split('\n')
+
+  return (
+    <div className="space-y-1.5 leading-relaxed text-sm">
+      {lines.map((line, idx) => {
+        const trimmed = line.trim()
+        if (!trimmed) {
+          return <div key={idx} className="h-1" />
+        }
+
+        // Check if line is a bullet point (* item or - item or • item)
+        const bulletMatch = trimmed.match(/^[\*\-•]\s+(.*)$/)
+        if (bulletMatch) {
+          return (
+            <div key={idx} className="flex items-start gap-2 pl-1 py-0.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400 mt-2 shrink-0" />
+              <span className="flex-1">{renderInlineText(bulletMatch[1])}</span>
+            </div>
+          )
+        }
+
+        // Check if line is a numbered item (1. item)
+        const numberMatch = trimmed.match(/^(\d+)\.\s+(.*)$/)
+        if (numberMatch) {
+          return (
+            <div key={idx} className="flex items-start gap-2 pl-1 py-0.5">
+              <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5">
+                {numberMatch[1]}.
+              </span>
+              <span className="flex-1">{renderInlineText(numberMatch[2])}</span>
+            </div>
+          )
+        }
+
+        return <p key={idx}>{renderInlineText(line)}</p>
+      })}
+    </div>
+  )
+}
+
 export default function AssistantChatWidget() {
   const { user, profile } = useAuth()
   const [isOpen, setIsOpen] = useState(false)
@@ -319,13 +375,17 @@ export default function AssistantChatWidget() {
                     )}
 
                     <div
-                      className={`p-3 rounded-2xl whitespace-pre-wrap leading-relaxed ${
+                      className={`p-3 rounded-2xl leading-relaxed ${
                         isUser
                           ? 'bg-emerald-600 text-white rounded-br-none shadow-sm'
                           : 'bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 border border-gray-100 dark:border-gray-800 rounded-bl-none shadow-sm'
                       }`}
                     >
-                      {msg.content}
+                      {isUser ? (
+                        <p className="whitespace-pre-wrap">{msg.content}</p>
+                      ) : (
+                        <FormattedMessageContent content={msg.content} />
+                      )}
                     </div>
 
                     {msg.created_at && (
