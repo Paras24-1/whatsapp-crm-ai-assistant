@@ -7,8 +7,13 @@ import SchedulesWidget from '@/components/dashboard/SchedulesWidget'
 import TasksWidget from '@/components/dashboard/TasksWidget'
 import TodosWidget from '@/components/dashboard/TodosWidget'
 import StickyNotesWidget from '@/components/dashboard/StickyNotesWidget'
+import { useAuth } from '@/contexts/AuthContext'
 
 export default function DashboardPage() {
+  const { profile } = useAuth()
+
+  const displayName = profile?.company_name || profile?.name || 'VoxAI Workspace'
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -17,10 +22,10 @@ export default function DashboardPage() {
           <div>
             <div className="flex items-center gap-2.5">
               <h1 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight">
-                VoxAI
+                {displayName}
               </h1>
               <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
-                Operations Dashboard
+                {profile?.role === 'admin' ? 'Admin Dashboard' : 'Team Operations'}
               </span>
             </div>
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">

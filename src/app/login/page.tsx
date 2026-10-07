@@ -21,6 +21,7 @@ import {
 export default function LoginPage() {
   const [isSignUp, setIsSignUp] = useState(false)
   const [name, setName] = useState('')
+  const [companyName, setCompanyName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -57,7 +58,11 @@ export default function LoginPage() {
           throw new Error('Passwords do not match')
         }
 
-        const res = await signUp(email, password, { name, role })
+        const res = await signUp(email, password, { 
+          name: name.trim(), 
+          company_name: companyName.trim() || 'VoxAI Workspace',
+          role 
+        })
 
         if (res.needEmailConfirm) {
           setSuccessMsg(
@@ -135,22 +140,40 @@ export default function LoginPage() {
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
             {isSignUp && (
-              <div>
-                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                  Full Name
-                </label>
-                <div className="relative">
-                  <UserIcon className="absolute left-3.5 top-3.5 w-4 h-4 text-gray-400" />
-                  <input
-                    type="text"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition"
-                    placeholder="e.g. Rahul Sharma"
-                    required={isSignUp}
-                  />
+              <>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                    Full Name
+                  </label>
+                  <div className="relative">
+                    <UserIcon className="absolute left-3.5 top-3.5 w-4 h-4 text-gray-400" />
+                    <input
+                      type="text"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition"
+                      placeholder="e.g. Rahul Sharma"
+                      required={isSignUp}
+                    />
+                  </div>
                 </div>
-              </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                    Company / Organization Name
+                  </label>
+                  <div className="relative">
+                    <Briefcase className="absolute left-3.5 top-3.5 w-4 h-4 text-gray-400" />
+                    <input
+                      type="text"
+                      value={companyName}
+                      onChange={(e) => setCompanyName(e.target.value)}
+                      className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition"
+                      placeholder="e.g. Shree Mahalaxmi Enterprises"
+                    />
+                  </div>
+                </div>
+              </>
             )}
 
             <div>

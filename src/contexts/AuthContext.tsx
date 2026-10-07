@@ -8,12 +8,14 @@ export interface UserProfile {
   id: string
   email: string
   name: string
+  company_name?: string
   role: 'admin' | 'employee'
   avatar?: string
 }
 
 interface SignUpMetadata {
   name: string
+  company_name?: string
   role?: 'admin' | 'employee'
 }
 
@@ -42,20 +44,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .eq('id', currentUser.id)
         .maybeSingle()
 
+      const userMeta = currentUser.user_metadata || {}
+
       if (data) {
-        setProfile(data)
+        setProfile({
+          ...data,
+          company_name: data.company_name || userMeta.company_name || '',
+        })
         return
       }
 
       // 2. If no profile exists yet, create one from auth metadata
-      const userMeta = currentUser.user_metadata || {}
       const fallbackName = userMeta.name || currentUser.email?.split('@')[0] || 'User'
+      const fallbackCompany = userMeta.company_name || 'VoxAI Workspace'
       const fallbackRole = (userMeta.role as 'admin' | 'employee') || 'employee'
 
       const newProfile: UserProfile = {
         id: currentUser.id,
         email: currentUser.email || '',
         name: fallbackName,
+        company_name: fallbackCompany,
         role: fallbackRole,
       }
 
@@ -77,6 +85,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         id: currentUser.id,
         email: currentUser.email || '',
         name: userMeta.name || currentUser.email?.split('@')[0] || 'User',
+        company_name: userMeta.company_name || 'VoxAI Workspace',
         role: (userMeta.role as 'admin' | 'employee') || 'employee',
       })
     } finally {
@@ -135,6 +144,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       options: {
         data: {
           name: metadata.name.trim(),
+          company_name: metadata.company_name?.trim() || 'VoxAI Workspace',
           role: metadata.role || 'employee',
         },
       },
@@ -148,6 +158,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         id: data.user.id,
         email: data.user.email || email.trim(),
         name: metadata.name.trim(),
+        company_name: metadata.company_name?.trim() || 'VoxAI Workspace',
         role: metadata.role || 'employee',
         is_active: true,
         created_at: new Date().toISOString(),
