@@ -397,14 +397,15 @@ export default function Topbar({ onOpenSidebar }: TopbarProps = {}) {
             >
               <div className="text-right hidden sm:block">
                 <p className="text-xs font-bold text-gray-800 dark:text-gray-200 truncate max-w-[130px]">
-                  Shree Mahalaxmi
+                  {profile?.name || 'User Account'}
                 </p>
-                <p className="text-[10px] text-emerald-600 font-semibold flex items-center justify-end gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> Active Store
+                <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold flex items-center justify-end gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                  {profile?.role === 'admin' ? 'Admin' : 'Team Member'}
                 </p>
               </div>
-              <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-900 to-indigo-700 text-white font-bold flex items-center justify-center text-xs shadow-md">
-                SM
+              <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-emerald-600 to-teal-700 text-white font-bold flex items-center justify-center text-xs shadow-md">
+                {(profile?.name || profile?.email || 'U').slice(0, 2).toUpperCase()}
               </div>
             </div>
 
@@ -412,11 +413,20 @@ export default function Topbar({ onOpenSidebar }: TopbarProps = {}) {
             {showProfileMenu && (
               <div
                 onClick={(e) => e.stopPropagation()}
-                className="absolute right-0 mt-2 w-56 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl shadow-2xl p-2 z-50 text-xs space-y-1"
+                className="absolute right-0 mt-2 w-60 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl shadow-2xl p-2 z-50 text-xs space-y-1"
               >
-                <div className="px-3 py-2 border-b border-gray-100 dark:border-gray-800">
-                  <p className="font-bold text-gray-900 dark:text-white">Shree Mahalaxmi Enterprises</p>
-                  <p className="text-[10px] text-gray-400">{profile?.email || 'admin@mahalaxmi.com'}</p>
+                <div className="px-3 py-2.5 border-b border-gray-100 dark:border-gray-800">
+                  <div className="flex items-center justify-between mb-1">
+                    <p className="font-bold text-gray-900 dark:text-white truncate">{profile?.name || 'My Account'}</p>
+                    <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider ${
+                      profile?.role === 'admin' 
+                        ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                        : 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300'
+                    }`}>
+                      {profile?.role || 'User'}
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-gray-400 truncate">{profile?.email}</p>
                 </div>
 
                 <Link
@@ -446,16 +456,19 @@ export default function Topbar({ onOpenSidebar }: TopbarProps = {}) {
                   <span>Invoices & Billing</span>
                 </Link>
 
-                <button
-                  onClick={async () => {
-                    await signOut()
-                    router.push('/login')
-                  }}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-xl font-bold transition-colors"
-                >
-                  <LogOut className="w-3.5 h-3.5" />
-                  <span>Logout</span>
-                </button>
+                <div className="pt-1 border-t border-gray-100 dark:border-gray-800">
+                  <button
+                    onClick={async () => {
+                      setShowProfileMenu(false)
+                      await signOut()
+                      router.push('/login')
+                    }}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-xl font-bold transition-colors"
+                  >
+                    <LogOut className="w-3.5 h-3.5" />
+                    <span>Sign Out / Switch Account</span>
+                  </button>
+                </div>
               </div>
             )}
           </div>
