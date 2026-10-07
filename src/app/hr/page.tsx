@@ -395,7 +395,7 @@ export default function HRPage() {
                   <input
                     type="email"
                     required
-                    placeholder="rahul@shreemahalaxmi.com"
+                    placeholder="rahul@voxai.com"
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                     className="w-full p-2.5 border border-gray-200 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-950 focus:ring-2 focus:ring-indigo-500 outline-none font-medium"

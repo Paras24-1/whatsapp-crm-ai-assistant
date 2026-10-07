@@ -1592,7 +1592,7 @@ export default function LeadBoard() {
                 <label className="block font-bold text-gray-700 dark:text-gray-300 mb-1">Company Name</label>
                 <input
                   type="text"
-                  placeholder="e.g. Shree Industries"
+                  placeholder="e.g. Acme Corp"
                   value={newCompany}
                   onChange={(e) => setNewCompany(e.target.value)}
                   className="w-full p-2.5 border border-gray-200 dark:border-gray-800 rounded-xl bg-gray-50 dark:bg-gray-950 focus:ring-2 focus:ring-purple-500 outline-none"
