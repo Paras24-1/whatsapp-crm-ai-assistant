@@ -90,11 +90,11 @@ export default function LoginPage() {
               <MessageSquare className="w-7 h-7 text-white" />
             </div>
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">
-              WhatsApp CRM & AI
+              VoxAI
             </h1>
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 flex items-center gap-1">
               <Sparkles className="w-3.5 h-3.5 text-emerald-500" />
-              Intelligent Lead & Operations Platform
+              Intelligent WhatsApp CRM & Operations Assistant
             </p>
           </div>
 

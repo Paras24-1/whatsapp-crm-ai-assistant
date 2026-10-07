@@ -176,7 +176,7 @@ function LeadCardComponent({
   const assignedDisplay =
     lead.assigned_to_name ||
     (lead.assigned_to && employeeMap?.get(lead.assigned_to)) ||
-    (lead.assigned_to && !lead.assigned_to.includes('-') ? lead.assigned_to : 'Shri Mahalaxmi Team')
+    (lead.assigned_to && !lead.assigned_to.includes('-') ? lead.assigned_to : 'VoxAI Team')
 
   const handleOpenChat = (e?: React.MouseEvent) => {
     if (e) e.stopPropagation()
@@ -592,7 +592,7 @@ function LeadCardComponent({
             <span className="text-gray-500 dark:text-gray-400">Created By</span>
             <span className="text-gray-400">:</span>
             <span className="text-gray-900 dark:text-gray-100 truncate">
-              Shri Mahalaxmi Enterprises
+              VoxAI Operations
             </span>
           </div>
 

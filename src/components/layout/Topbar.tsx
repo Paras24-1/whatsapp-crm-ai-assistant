@@ -106,7 +106,7 @@ export default function Topbar({ onOpenSidebar }: TopbarProps = {}) {
       } else {
         // Fallback default helpful notifications
         setNotifications([
-          { id: '1', title: 'Welcome to Shree Mahalaxmi CRM', scheduled_at: new Date().toISOString(), type: 'system' },
+          { id: '1', title: 'Welcome to VoxAI CRM', scheduled_at: new Date().toISOString(), type: 'system' },
           { id: '2', title: 'Daily Lead Follow-ups Scheduled', scheduled_at: new Date().toISOString(), type: 'followup' }
         ])
       }

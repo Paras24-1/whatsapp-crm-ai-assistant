@@ -6,8 +6,8 @@ import { AuthProvider } from '@/contexts/AuthContext'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'VoxAI CRM',
-  description: 'WhatsApp CRM Dashboard',
+  title: 'VoxAI - Intelligent WhatsApp CRM & AI Assistant',
+  description: 'Intelligent AI operations, WhatsApp CRM, and billing assistant',
 }
 
 export const viewport: Viewport = {

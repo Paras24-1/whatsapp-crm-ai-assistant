@@ -56,11 +56,11 @@ export default function PaymentMethodsPage() {
   // Bank Form State
   const [bank, setBank] = useState<BankDetails>(() => {
     return {
-      accountName: 'Shree Mahalaxmi Enterprises',
+      accountName: 'VoxAI Technologies',
       bankName: 'HDFC Bank Ltd.',
       accountNumber: '50200012345678',
       ifscCode: 'HDFC0001234',
-      branch: 'Industrial Area Phase 2, Pune',
+      branch: 'Corporate Finance Branch',
       isActive: true,
     }
   })
@@ -69,9 +69,9 @@ export default function PaymentMethodsPage() {
   // UPI Form State
   const [upi, setUpi] = useState<UpiDetails>(() => {
     return {
-      upiId: 'shreemahalaxmi@hdfcbank',
-      payeeName: 'Shree Mahalaxmi Enterprises',
-      merchantCode: 'SME789456',
+      upiId: 'voxai@hdfcbank',
+      payeeName: 'VoxAI Technologies',
+      merchantCode: 'VOXAI789456',
       isActive: true,
     }
   })

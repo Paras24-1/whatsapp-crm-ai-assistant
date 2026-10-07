@@ -48,7 +48,7 @@ export default function InvoiceAddPage() {
     return d.toISOString().split('T')[0]
   })
   const [status, setStatus] = useState<'paid' | 'unpaid' | 'partially_paid' | 'draft'>('unpaid')
-  const [notes, setNotes] = useState('Thank you for doing business with Shree Mahalaxmi Enterprises!')
+  const [notes, setNotes] = useState('Thank you for doing business with VoxAI!')
 
   // Line items
   const [items, setItems] = useState<InvoiceItem[]>([
@@ -187,12 +187,11 @@ export default function InvoiceAddPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-6 border-b border-gray-100 dark:border-gray-800">
             <div>
               <div className="flex items-center gap-2 mb-2">
-                <div className="px-2 py-0.5 bg-blue-900 text-white font-extrabold rounded text-xs">SHREE</div>
-                <span className="font-bold text-gray-900 dark:text-white text-base">Mahalaxmi Enterprises</span>
+                <div className="px-2 py-0.5 bg-emerald-600 text-white font-extrabold rounded text-xs">VOX</div>
+                <span className="font-bold text-gray-900 dark:text-white text-base">VoxAI Technologies</span>
               </div>
-              <p className="text-xs text-gray-500">Plot No. 42, Industrial Area, Phase II</p>
-              <p className="text-xs text-gray-500">GSTIN: 27AABCS1429B1Z8</p>
-              <p className="text-xs text-gray-500">Contact: +91 98230 12345 | info@mahalaxmi.com</p>
+              <p className="text-xs text-gray-500">Intelligent Operations & WhatsApp CRM</p>
+              <p className="text-xs text-gray-500">Contact: support@voxai.com</p>
             </div>
 
             <div className="space-y-3 md:text-right">
